@@ -28,10 +28,16 @@ document.getElementById('search_button').addEventListener('click', () => {
         fetch(`/api/search/${tinNumber}`)
             .then(response => response.json())
             .then(data => {
+                // throw an error if the response is an error
                 if (data.error) {
-                    // show error alert
-                    createAutoCloseAlert('danger', data.error);
+                    // check for 404 error
+                    if (data.error === 'Document not found') {
+                        createAutoCloseAlert('warning', 'TIN not found', 10000);
+                    } else {
+                    createAutoCloseAlert('danger', 'An error occurred while fetching the TIN details');
+                    }
                 } else {
+                    console.log('Success:', data);
                     // show the result
                     resultContainer.innerHTML = `
                         <div class="card">
@@ -53,9 +59,8 @@ document.getElementById('search_button').addEventListener('click', () => {
                 createAutoCloseAlert('danger', 'An error occurred while fetching the TIN details');
                 resultContainer.innerHTML = '';
             });
-    }
-}
-);
+        }
+});
 // creates alerts
 function createAutoCloseAlert(type, message, timeout = 5000) {
   const alertContainer = document.getElementById('alert-box');

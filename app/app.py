@@ -9,7 +9,7 @@ app.config['DEBUG'] = True
 db = SQLAlchemy(app)
 
 # Define the Document model
-class Document(db.Model):
+class Documents(db.Model):
     tin_number = db.Column(db.String(10), primary_key=True)
     name = db.Column(db.String(255))
     location = db.Column(db.String(255))
@@ -26,19 +26,15 @@ def index():
 @app.route('/api/search/<tin_number>')
 def search(tin_number):
 
-    print(tin_number)
-    document = Document.query.filter_by(tin_number=tin_number).first()
+    document = Documents.query.filter_by(tin_number=tin_number).first()
+    # handle document not found or not on record
     if not document:
-        return "Document not found", 404
-    result = {
-        "tin_number": document.tin_number,
-        "name": document.name,
-        "location": document.location,
-        "parent_dir": document.parent_dir,
-        "file_path": document.file_path
-    }
+        return jsonify({"error": "Tin not on record"})
+    elif not os.path.exists(document.file_path):
+        return jsonify({"error": "Document not found"})
 
-    return jsonify(result)
+
+    return send_file(document.file_path, as_attachment=False)
 
 @app.route('/about')
 def about():
