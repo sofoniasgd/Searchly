@@ -1,3 +1,10 @@
+document.addEventListener('DOMContentLoaded', () => {
+    // Load the default PDF on page load
+    const defaultPdfUrl = '/static/default.pdf';
+    const resultContainer = document.getElementById('result-container');
+    displayPdf(defaultPdfUrl, resultContainer);
+});
+
 document.getElementById('search_button').addEventListener('click', () => {
     const tinNumber = document.getElementById('searchinput').value.trim();
     const resultContainer = document.getElementById('result-container');
@@ -10,9 +17,9 @@ document.getElementById('search_button').addEventListener('click', () => {
         // wrong TIN format alert
         createAutoCloseAlert('warning', 'please enter a valid <strong>TIN</strong> number');
     } else {
-        // clear the result container
+        // clear the canvas if it has a pdf
         if (resultContainer != null && resultContainer.innerHTML !== '') {
-            resultContainer.innerHTML = '';
+            resultContainer.innerHTML = '<canvas id="pdf-canvas"></canvas>';
         }
         // clear the alert box
         if (alertBox != null && alertBox.innerHTML !== '') {
@@ -24,43 +31,53 @@ document.getElementById('search_button').addEventListener('click', () => {
                 <span class="visually-hidden">Loading...</span>
             </div>
         `;
-        // make the api call
-        fetch(`/api/search/${tinNumber}`)
-            .then(response => response.json())
-            .then(data => {
-                // throw an error if the response is an error
-                if (data.error) {
-                    // check for 404 error
-                    if (data.error === 'Document not found') {
-                        createAutoCloseAlert('warning', 'TIN not found', 10000);
-                    } else {
-                    createAutoCloseAlert('danger', 'An error occurred while fetching the TIN details');
-                    }
+        // do a health check on the TIN
+        // like checking if the TIN is in the database and if the pdf exists
+        fetch(`/api/check/${tinNumber}`)
+            .then(response => {
+                if (response.ok) {
+                    return response.json();
                 } else {
-                    console.log('Success:', data);
-                    // show the result
-                    resultContainer.innerHTML = `
-                        <div class="card">
-                            <div class="card-body">
-                                <h5 class="card-title
-                                ">TIN Details</h5>
-                                <p class="card-text">TIN: ${data.tin}</p>
-                                <p class="card-text">Name: ${data.name}</p>
-                                <p class="card-text">Address: ${data.address}</p>
-                                <p class="card-text">Phone: ${data.phone}</p>
-                                <p class="card-text">Email: ${data.email}</p>
-                            </div>
-                        </div>
-                    `;
+                    createAutoCloseAlert('danger', 'An error occurred while checking the TIN');
                 }
             })
+            .then(data => {
+                // show warning depending on the response
+                if (data.error) {
+                    // document not found or record not found
+                    if (data.error === 'Tin not on record') {
+                        createAutoCloseAlert('warning', 'TIN not found', 10000);
+                    } else if (data.error === 'Document not found') {
+                    createAutoCloseAlert('warning', 'Document not found');
+                    }
+                } else if (data.success) {
+                    // do another fetch to get the pdf
+                    fetch(`/api/search/${tinNumber}`)
+                    .then(response => {
+                        if (response.ok) {
+                            return response.blob();
+                        } else {
+                            throw new Error('Document not found');
+                        }
+                    })
+                    .then(blob => {
+                        // Display the PDF using PDF.js
+                        const pdfUrl = URL.createObjectURL(blob);
+                        displayPdf(pdfUrl, resultContainer);
+                    })
+                }
+            }
+            )
             .catch(error => {
                 console.error('Error:', error);
-                createAutoCloseAlert('danger', 'An error occurred while fetching the TIN details');
+                createAutoCloseAlert('danger', 'An error occurred while checking the TIN');
                 resultContainer.innerHTML = '';
-            });
-        }
-});
+            }
+            );
+    }
+}
+);
+
 // creates alerts
 function createAutoCloseAlert(type, message, timeout = 5000) {
   const alertContainer = document.getElementById('alert-box');
@@ -86,3 +103,28 @@ function createAutoCloseAlert(type, message, timeout = 5000) {
     alertDiv.remove();
   }, timeout);
   }
+
+
+// pdf display function
+function displayPdf(pdfUrl, container) {
+    const canvas = document.getElementById('pdf-canvas');
+    const loadingTask = pdfjsLib.getDocument(pdfUrl);
+
+    loadingTask.promise.then(pdf => {
+        // Load the first page
+        pdf.getPage(1).then(page => {
+            const viewport = page.getViewport({ scale: 1.5 });
+            canvas.width = viewport.width;
+            canvas.height = viewport.height;
+
+            const context = canvas.getContext('2d');
+            const renderContext = {
+                canvasContext: context,
+                viewport: viewport
+            };
+            page.render(renderContext);
+        });
+    }).catch(error => {
+        container.innerHTML = `<p class="text-danger">Error loading PDF: ${error.message}</p>`;
+    });
+}

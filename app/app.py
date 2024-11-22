@@ -23,16 +23,21 @@ class Documents(db.Model):
 def index():
     return render_template('index.html')
 
-@app.route('/api/search/<tin_number>')
-def search(tin_number):
-
+# health check api
+@app.route('/api/check/<tin_number>')
+def check(tin_number):
     document = Documents.query.filter_by(tin_number=tin_number).first()
-    # handle document not found or not on record
     if not document:
         return jsonify({"error": "Tin not on record"})
     elif not os.path.exists(document.file_path):
         return jsonify({"error": "Document not found"})
+    else:
+        return jsonify({"success": "pdf found"})
 
+@app.route('/api/search/<tin_number>')
+def search(tin_number):
+
+    document = Documents.query.filter_by(tin_number=tin_number).first()
 
     return send_file(document.file_path, as_attachment=False)
 
