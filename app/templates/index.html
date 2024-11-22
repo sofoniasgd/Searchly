@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-2">
+    <div class="row">
+        <div class="contaier mt-1">
+            <h6>Search for PDF</h6>
+        </div>
+        <div class="col-md-4">
+            <form class="form-inline" action="" method="get">
+                <div class="form-group mx-sm-3 mb-2">
+                    <input type="text" class="form-control" id="searchinput" placeholder="Enter TIN number" pattern="\d{10}" required>
+                </div>
+                
+            </form>
+        </div>
+        <div class="col-md-6">
+            <button type="submit" class="btn btn-primary mb-2" id="search_button">Search</button>
+        </div>
+    </div>
+    <div class="row">
+        <div class="container mt-1">
+            <h6>PDF Preview</h6>
+        </div>
+        <div id="result-container">
+            <canvas id="pdf-canvas"></canvas>
+        </div>
+</div>
+
+<script>
+    function makeApiCall(event) {
+        event.preventDefault();
+        const number = document.getElementById('searchInput').value;
+        if (number.length === 10) {
+            window.location.href = `/pdf/${number}`;
+        } else {
+            alert('Please enter a valid 10-digit number.');
+        }
+    }
+</script>
+{% endblock %}
