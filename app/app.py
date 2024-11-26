@@ -47,11 +47,11 @@ def about():
 
 @app.route('/pdf/<tin_number>')
 def get_pdf(tin_number):
-    document = Document.query.filter_by(tin_number=tin_number).first()
+    document = Documents.query.filter_by(tin_number=tin_number).first()
     if document:
         return send_file(document.file_path, as_attachment=False)
     else:
         return "Document not found", 404
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=5000)
